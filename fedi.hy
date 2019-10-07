@@ -4,18 +4,7 @@
 (import [pyaml [yaml]])
 (import [getpass [getpass]])
 
-(defn read-config []
-  (if (.exists path ".cfg.yaml")
-      (->
-        ".cfg.yaml"
-        (open "r")
-        (yaml.load))
-      {}))
-
-(defn write-config [config]
-  (.dump yaml
-    config
-    (open ".cfg.yaml" "w")))
+(import common)
 
 (defn register-client [base_url]
   (->
@@ -50,26 +39,31 @@
     visibility
     (get-visibility)))
     
+(defn get-in-reply-to-id []
+  (if (= (input "is this a reply (y/n)? ") "y")
+    (input "id to reply to: ")
+    None))
+
 (defn post-loop [base_url token]
   (-> 
     base_url
     (urljoin "/api/v1/statuses")
     (requests.post
-      :data {"status" (input "Status: ") "visibility" (get-visibility)}
+      :data {"status" (input "Status: ") "visibility" (get-visibility) "in_reply_to_id" (get-in-reply-to-id)}
       :headers {"authorization" token})
     (.json)
     (get "url")
     (print))
    (post-loop base_url token))
         
-(setv config (read-config))
+(setv config (common.read-config))
 (if (not (in "base_url" config))
   (assoc config "base_url" (input "Base url: ")))
 
-(write-config config)
+(common.write-config config)
 
 (if (not (in "token" config))
   (assoc config "token" (register-and-login (get config "base_url"))))
-(write-config config)
+(common.write-config config)
 
 (post-loop (get config "base_url") (+ "Bearer " (get config "token")))
